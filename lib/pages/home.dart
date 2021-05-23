@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'package:band_names/models/band.dart';
+import 'package:band_names/services/socket_service.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -13,16 +16,33 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   //listadio
 
-  List<Band> bands = [
-    Band(id: '1', name: 'Metallica', votes: 5),
-    Band(id: '2', name: 'Emperor', votes: 50),
-    Band(id: '3', name: 'Megadeth', votes: 123),
-    Band(id: '4', name: 'Slayer', votes: 56),
-    Band(id: '5', name: 'Deicide', votes: 59),
-  ];
+  List<Band> bands = [];
+
+  @override
+  void initState() {
+    final socketService = Provider.of<SocketService>(context, listen: false);
+    socketService.socket.on('activeBands', (bands) {
+      this.bands = (bands as List).map((band) => Band.fromMap(band)).toList();
+      // this
+      //     .bands
+      //     .addAll((bands as List).map((band) => Band.fromMap(band)).toList());
+      setState(() {});
+    });
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    final socketService = Provider.of<SocketService>(context, listen: false);
+    socketService.socket.off('activeBands');
+    socketService.socket.off('active-bands');
+    // TODO: implement dispose
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final socketService = Provider.of<SocketService>(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -31,6 +51,20 @@ class _HomePageState extends State<HomePage> {
         ),
         elevation: 1,
         backgroundColor: Colors.white,
+        actions: [
+          Container(
+            margin: EdgeInsets.only(right: 10.0),
+            child: socketService.serverStatus == ServerStatus.Online
+                ? Icon(
+                    Icons.check_circle,
+                    color: Colors.blue[300],
+                  )
+                : Icon(
+                    Icons.offline_bolt,
+                    color: Colors.red[300],
+                  ),
+          )
+        ],
       ),
       body: ListView.builder(
         itemCount: bands.length,
@@ -45,6 +79,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _bandTile(Band band) {
+    final socketService = Provider.of<SocketService>(context, listen: false);
     return Dismissible(
       key: Key(band.id),
       direction: DismissDirection.startToEnd,
@@ -52,6 +87,9 @@ class _HomePageState extends State<HomePage> {
         print('direction: $direction');
         print('id: ${band.id}');
         //TODO: llamar delete del server backend
+        socketService.socket.emit('del-band', {'id': band.id});
+
+        //setState(() {});
       },
       background: Container(
         color: Colors.red,
@@ -71,7 +109,11 @@ class _HomePageState extends State<HomePage> {
         title: Text(band.name),
         trailing: Text('${band.votes}', style: TextStyle(fontSize: 20)),
         onTap: () {
-          print(band.name);
+          print('Vamos a votar por. ' + band.name);
+          band.votes++;
+          socketService.socket.emit('vote-band',
+              {'id': band.id, 'name': band.name, 'votes': band.votes});
+          //setState(() {});
         },
       ),
     );
@@ -129,12 +171,19 @@ class _HomePageState extends State<HomePage> {
     print(name);
     if (name.length > 1) {
       //podemos agregarlo
-      this
-          .bands
-          .add(new Band(id: bands.length.toString(), name: name, votes: 0));
+      // this
+      // .bands
+      // .add(new Band(id: bands.length.toString(), name: name, votes: 0));
+
+      //emitir: add-band
+      SocketService socketService =
+          Provider.of<SocketService>(context, listen: false);
+      socketService.socket.emit('add-band', {'name': name});
+      //{name: name}
+
     }
 
-    setState(() {});
+    //setState(() {});
     Navigator.pop(context);
   }
 }

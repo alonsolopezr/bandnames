@@ -6,6 +6,7 @@ class StatusPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final socketService = Provider.of<SocketService>(context);
+
     return Scaffold(
       body: Center(
         child: Column(
@@ -14,6 +15,16 @@ class StatusPage extends StatelessWidget {
           ],
           mainAxisAlignment: MainAxisAlignment.center,
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.message),
+        onPressed: () {
+          // Dart client
+          print('mandando msg desde flutter');
+
+          socketService.socket.emit('flutter-msg',
+              {'nombre': 'flutter', 'mensaje': 'Hola desde flutter....'});
+        },
       ),
     );
   }
