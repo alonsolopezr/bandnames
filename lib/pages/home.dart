@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:pie_chart/pie_chart.dart';
 
 import 'package:band_names/models/band.dart';
 import 'package:band_names/services/socket_service.dart';
@@ -27,7 +28,10 @@ class _HomePageState extends State<HomePage> {
 
   //listener para recibir los datos de la coleccion para mostrar en Home
   void _handleActiveBands(dynamic payload) {
+    print("--->Rellenando this.bands");
+
     this.bands = (payload as List).map((band) => Band.fromMap(band)).toList();
+    print(this.bands.length.toString() + " elementos");
     // this
     //     .bands
     //     .addAll((bands as List).map((band) => Band.fromMap(band)).toList());
@@ -69,9 +73,16 @@ class _HomePageState extends State<HomePage> {
           )
         ],
       ),
-      body: ListView.builder(
-        itemCount: bands.length,
-        itemBuilder: (context, i) => _bandTile(bands[i]),
+      body: Column(
+        children: [
+          _showGraph(),
+          Expanded(
+            child: ListView.builder(
+              itemCount: bands.length,
+              itemBuilder: (context, i) => _bandTile(bands[i]),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
@@ -171,16 +182,64 @@ class _HomePageState extends State<HomePage> {
       // this
       // .bands
       // .add(new Band(id: bands.length.toString(), name: name, votes: 0));
-
       //emitir: add-band
       SocketService socketService =
           Provider.of<SocketService>(context, listen: false);
       socketService.socket.emit('add-band', {'name': name});
       //{name: name}
-
     }
-
     //setState(() {});
     Navigator.pop(context);
+  }
+
+  /// Show Ring graph .
+  Widget _showGraph() {
+    Map<String, double> dataMap = new Map();
+    //asignamos al dataMap los data del Bands
+    this.bands.forEach((band) {
+      dataMap.putIfAbsent(band.name, () => band.votes.toDouble());
+    });
+
+    List<Color> colorList = [
+      Colors.blue[500],
+      Colors.purple[500],
+      Colors.brown[500],
+      Colors.green[500],
+      Colors.pink[500]
+    ];
+    return Container(
+      padding: EdgeInsets.only(top: 10.0),
+      width: double.infinity,
+      height: 200,
+      child: PieChart(
+        // dataMap: (this.bands as List).map((band) => Band.fromMap(band)).toList(),
+        dataMap: dataMap,
+        animationDuration: Duration(milliseconds: 800),
+        chartLegendSpacing: 32,
+        chartRadius: MediaQuery.of(context).size.width / 3.2,
+        colorList: colorList,
+        initialAngleInDegree: 0,
+        chartType: ChartType.ring,
+        ringStrokeWidth: 32,
+        centerText: "Bands Votes",
+        legendOptions: LegendOptions(
+          showLegendsInRow: false,
+          legendPosition: LegendPosition.right,
+          showLegends: true,
+          // legendShape: _BoxShape.circle,
+          legendTextStyle: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        chartValuesOptions: ChartValuesOptions(
+          showChartValueBackground: true,
+          showChartValues: true,
+          showChartValuesInPercentage: false,
+          showChartValuesOutside: false,
+          decimalPlaces: 0,
+        ),
+      ),
+    );
+    //return PieChart(dataMap: dataMap);
   }
 }
